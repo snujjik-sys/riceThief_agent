@@ -1,6 +1,9 @@
 import streamlit as st
 import agent_logic
+import base64
+from openai import OpenAI
 
+client = OpenAI(api_key=agent_logic.API_KEY)
 
 HIDE_Press_Enter_to_apply = """
 <style>
@@ -45,29 +48,36 @@ if "agent_loaded" not in st.session_state:
 if "recent_recipe_names" not in st.session_state:
     st.session_state.recent_recipe_names = []
 
+if "dish_image_cache" not in st.session_state:
+    st.session_state.dish_image_cache = {}
 
 # -------------------------------
 # 냉장고 UI (사이드바)
 # -------------------------------
 
+def add_fridge_items():
+    """냉장고 재료 추가 버튼 콜백: 재료 추가 후 입력창 비우기"""
+    raw_input = st.session_state.get("fridge_input", "")
+    new_ings = [x.strip() for x in raw_input.split(",") if x.strip()]
+    if new_ings:
+        for p in new_ings:
+            if p not in st.session_state.fridge_ingredients:
+                st.session_state.fridge_ingredients.append(p)
+    # 입력창 비우기
+    st.session_state.fridge_input = ""
+
 def render_fridge_sidebar():
     st.subheader("우리 집 냉장고")
 
-    # 재료 입력
-    raw_input = st.text_input(
+    #재료 입력
+    st.text_input(
         "냉장고에 있는 재료 추가 (쉼표로 여러 개 입력 가능)",
         key="fridge_input",
         placeholder="예: 계란, 밥, 참기름",
     )
 
-    add_btn = st.button("재료 추가", key="btn_add_fridge")
+    st.button("재료 추가", key="btn_add_fridge", on_click=add_fridge_items)
 
-    if add_btn:
-        new_ings = [x.strip() for x in raw_input.split(",") if x.strip()]
-        if new_ings:
-            for p in new_ings:
-                if p not in st.session_state.fridge_ingredients:
-                    st.session_state.fridge_ingredients.append(p)
 
     # 현재 재료 목록
     if st.session_state.fridge_ingredients:
@@ -83,6 +93,37 @@ def render_fridge_sidebar():
                     st.rerun()
     else:
         st.caption("아직 등록된 재료가 없네! 계란, 밥, 참기름 이런 식으로 추가해줘.")
+
+
+#이미지url 반환
+def get_or_generate_dish_image(dish_name: str) -> str:
+    if not dish_name:
+        return None
+
+    # 세션 캐시 먼저 확인
+    cache = st.session_state.get("dish_image_cache", {})
+    if dish_name in cache:
+        return cache[dish_name]
+
+    prompt = f"{dish_name} 한식 요리 음식 사진, realistic food photography, top-down view"
+
+    try: 
+        result = client.images.generate(
+            model="gpt-image-1",
+            prompt=prompt,
+            n=1,
+            size="1024x1024",
+        )
+        b64 = result.data[0].b64_json
+        image_bytes = base64.b64decode(b64)
+
+        cache[dish_name] = image_bytes
+        st.session_state.dish_image_cache = cache
+
+        return image_bytes
+    except Exception as e:
+        print("이미지 생성 실패:", repr(e))
+        return None
 
 
 # -------------------------------
@@ -236,6 +277,9 @@ def render_feature_recommend():
         st.session_state.last_recommendation = rec
         st.session_state.selected_dish_name = rec["name"]
         st.session_state.selected_dish_origin = "feature1"
+        with st.spinner("사진 불러오는 중.."):
+            img_bytes = get_or_generate_dish_image(rec["name"])
+        st.session_state.last_recommendation_image = img_bytes
 
         # 최근 추천 리스트 업데이트 (중복 제거 + 최대 10개 유지)
         names = st.session_state.get("recent_recipe_names", [])
@@ -252,6 +296,15 @@ def render_feature_recommend():
 
         st.markdown(f"### 오늘은 **{rec['name']}** 어떠니?")
         st.write(rec["reason"])
+
+        #이미지
+        img_bytes = get_or_generate_dish_image(rec["name"])
+        if img_bytes:
+            st.image(
+                img_bytes,
+                caption=f"{rec['name']} 예시 이미지",
+                use_container_width=True,
+            )
 
         c1, c2 = st.columns(2)
         with c1:
@@ -277,6 +330,9 @@ def render_feature_recommend():
                 st.session_state.last_recommendation = rec
                 st.session_state.selected_dish_name = rec["name"]
                 st.session_state.selected_dish_origin = "feature1"
+                with st.spinner("사진 불러오는 중.."):
+                    img_bytes = get_or_generate_dish_image(rec["name"])
+                st.session_state.last_recommendation_image = img_bytes
 
                 # 최근 추천 리스트 업데이트 (중복 제거 + 최대 10개 유지)
                 names = st.session_state.get("recent_recipe_names", [])
@@ -292,30 +348,41 @@ def render_feature_recommend():
 # 기능 2: 특정 음식 정보 검색
 # -------------------------------
 
+def search_recipe():
+    """레시피 검색 버튼 콜백: 검색 후 입력창 비우기"""
+    dish_name = st.session_state.get("info_dish_input", "").strip()
+    if not dish_name:
+        return
+
+    with st.spinner("엄마가 레시피 노트를 뒤적이는 중..."):
+        details = agent_logic.get_recipe_details(
+            st.session_state.db,
+            st.session_state.llm,
+            dish_name,
+        )
+    st.session_state.recipe_details = details
+    st.session_state.selected_dish_name = details["final_name"]
+
+    # 입력창 비우기
+    st.session_state.info_dish_input = ""
+
 def render_feature_info():
     st.header("레시피 검색")
     st.write("궁금한 요리 이름을 입력하면 엄마가 알려줄게.")
 
     default_name = st.session_state.get("selected_dish_name", "")
 
-    dish_name = st.text_input(
+    if "info_dish_input" not in st.session_state:
+        st.session_state.info_dish_input = default_name
+
+    st.text_input(
         "어떤 음식이 궁금해?",
-        value=default_name,
         key="info_dish_input",
-        placeholder="예: 스팸김치볶음밥",
+        placeholder="예: 김치볶음밥, 밤 티라미수",
     )
 
-    search_clicked = st.button("레시피 검색", key="btn_search_recipe")
+    st.button("🔍 레시피 검색", key="btn_search_recipe", on_click=search_recipe)
 
-    if search_clicked and dish_name.strip():
-        with st.spinner("엄마가 레시피 노트를 뒤적이는 중..."):
-            details = agent_logic.get_recipe_details(
-                st.session_state.db,
-                st.session_state.llm,
-                dish_name.strip(),
-            )
-        st.session_state.recipe_details = details
-        st.session_state.selected_dish_name = details["final_name"]
 
     if "recipe_details" not in st.session_state:
         return
@@ -324,6 +391,14 @@ def render_feature_info():
 
     st.markdown("---")
     st.subheader(f"'{details['final_name']}' 레시피")
+
+    img_bytes = get_or_generate_dish_image(details["final_name"])
+    if img_bytes:
+        st.image(
+            img_bytes,
+            caption=f"{details['final_name']} 예시 이미지",
+            use_container_width=True,
+        )
 
     if details.get("from_recipes_txt"):
         st.caption("이 레시피는 엄마의 레시피 노트 (recipes.txt)를 참고해서 정리했어.")
