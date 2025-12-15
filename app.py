@@ -389,6 +389,16 @@ def render_feature_info():
 
     details = st.session_state.recipe_details
 
+    if details.get("not_food"):
+        st.markdown("---")
+        st.subheader(f"'{details['final_name']}'라는 이름의 음식을 찾지 못했어 😥")
+        st.warning(
+            f"'{details['final_name']}'는(은) 음식 이름이 아닐 수도 있고, "
+            "엄마가 잘 모르는 이름일 수도 있어.\n\n"
+            "다른 음식 이름으로 검색해 보거나, 철자를 한 번만 더 확인해 줄래?"
+        )
+        return
+
     st.markdown("---")
     st.subheader(f"'{details['final_name']}' 레시피")
 

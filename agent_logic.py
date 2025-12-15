@@ -307,17 +307,8 @@ use_recipes_txt 는 위의 레시피 노트 후보들 중 하나를 기반으로
 
 """# 5. 기능 2: 특정 음식 정보 + 영양 분석"""
 
-
+#칼로리, 탄단지
 def _analyze_nutrition(llm: ChatOpenAI, dish_name: str, raw_text: str) -> Dict[str, Any]:
-    """
-    레시피 텍스트를 기반으로 칼로리 수준과 탄단지 비율을 대략 추정.
-    반환 예:
-        {
-          "calorie_level": "낮음" | "보통" | "높음",
-          "macro_ratio": (x, y, z)
-        }
-    """
-
     system_prompt = (
         "너는 한국 가정식 요리의 영양을 대략 추정해주는 영양사야. "
         "정확한 수치가 아니라 '대략적인 경향'을 알려주는 것이 목표야."
@@ -358,46 +349,100 @@ def _analyze_nutrition(llm: ChatOpenAI, dish_name: str, raw_text: str) -> Dict[s
         "macro_ratio": ratio,
     }
 
-
+#레시피 검색
 def get_recipe_details(db, llm: ChatOpenAI, dish_name: str) -> Dict[str, Any]:
-    """
-    기능 2에서 사용되는 "특정 음식 레시피 + 재료 + 영양" 조회 함수.
+    # 0) dish_name이 실제 음식/요리/음료 이름인지 판별
+    clf_system_prompt = (
+        "너는 입력 문자열이 음식/요리/음료 이름인지 판별하는 도우미야. "
+        "한국어/외국어 모두 가능하지만, 의미 없는 자모 나열이나 사람/장소/자동차/회사 이름 등은 음식이 아니라고 판단해. "
+        "조금 이상한 철자라도 음식 같으면 true 로 봐도 좋아."
+    )
 
-    반환 예:
-    {
-      "final_name": "해장라면",
-      "from_recipes_txt": True/False,
-      "ingredients": ["재료1", "재료2", ...],
-      "steps": ["1단계 설명", "2단계 설명", ...],
-      "summary": "레시피 전체 요약",
-      "nutrition": {
-          "calorie_level": "보통",
-          "macro_ratio": (4, 3, 3)
-      },
-      "source_text": "원문 텍스트(있다면)"
-    }
-    """
+    clf_user_prompt = f"""
+입력: "{dish_name}"
 
-    # 1) recipes.txt 기반으로 관련 레시피 검색
-    results = db.similarity_search(dish_name, k=3)
-    from_recipes_txt = bool(results)
+다음 형식의 JSON 한 줄로만 답해:
 
-    if results:
-        # 여러 줄을 합쳐서 LLM에게 전달
-        combined_text = "\n\n".join([doc.page_content for doc in results])
-        source_text = results[0].page_content
+{{
+  "is_food": true 또는 false,
+  "normalized_name": "정리된 음식 이름 (알 수 없으면 빈 문자열)"
+}}
+"""
+
+    try:
+        clf = _call_llm_json(llm, clf_system_prompt, clf_user_prompt)
+        is_food = bool(clf.get("is_food", True))
+        normalized_name = (clf.get("normalized_name") or dish_name).strip()
+    except Exception:
+        # 분류에 실패하면 일단 음식이라고 가정하고 진행
+        is_food = True
+        normalized_name = dish_name
+
+    # ⚠️ 음식이 아니라고 판별된 경우: 레시피를 만들지 않고 바로 리턴
+    if not is_food:
+        final_name = normalized_name or dish_name
+        msg = (
+            f"'{final_name}'는(은) 음식 이름으로는 엄마가 잘 모르겠어. "
+            "혹시 음식 이름이 맞는지, 또는 철자를 조금 다르게 써 볼래?"
+        )
+        return {
+            "final_name": final_name,
+            "from_recipes_txt": False,
+            "ingredients": [],
+            "steps": [],
+            "summary": msg,
+            "nutrition": None,
+            "source_text": "",
+            "not_food": True,
+        }
+
+    # 여기서부터는 '음식/요리/음료'라고 판정된 경우만 진행
+    query_name = normalized_name
+
+    # 1) recipes.txt 기반으로 관련 레시피 검색 (유사도 점수까지 사용)
+    try:
+        scored_results = db.similarity_search_with_relevance_scores(
+            query_name,
+            k=5,
+            score_threshold=0.0,  # threshold는 아래에서 수동으로 적용
+        )
+    except Exception:
+        # 사용하는 버전에 따라 이 메서드가 없을 수도 있으니 fallback
+        docs_only = db.similarity_search(query_name, k=3)
+        scored_results = [(doc, 1.0) for doc in docs_only]
+
+    # relevance score는 [0, 1] 범위 (1에 가까울수록 더 유사)
+    # 이 threshold보다 낮으면 "그다지 비슷하지 않다"고 보고 엄마 노트로 쓰지 않음
+    SIM_THRESHOLD = 0.5
+
+    filtered_docs = [
+        doc for (doc, score) in scored_results
+        if score is not None and score >= SIM_THRESHOLD
+    ]
+
+    from_recipes_txt = bool(filtered_docs)
+
+    if from_recipes_txt:
+        # 충분히 유사한 레시피가 있는 경우에만 엄마 노트 내용을 LLM에 제공
+        combined_text = "\n\n".join([doc.page_content for doc in filtered_docs])
+        source_text = filtered_docs[0].page_content
     else:
+        # 유사한 레시피가 하나도 없으면, 엄마 노트는 없는 것처럼 처리
         combined_text = "(관련된 레시피를 엄마 노트에서 찾지 못했어.)"
-        source_text = dish_name
+        source_text = query_name
 
     # 2) LLM에게 재료/조리법 정리 요청
     system_prompt = (
         "너는 자취생에게 요리를 알려주는 다정한 '엄마'야. "
-        "가능하면 [엄마의 레시피 노트]를 우선 활용하고, 부족하면 너의 일반 요리 지식을 보충해."
+        "가능하면 [엄마의 레시피 노트에서 찾은 내용]을 우선 활용하고, "
+        "그 내용이 충분하지 않거나 거의 없으면 너의 일반 요리 지식을 보충해서 레시피를 완성해. "
+        "만약 [엄마의 레시피 노트에서 찾은 내용]이 사실상 "
+        "'관련된 레시피를 엄마 노트에서 찾지 못했어.' 같은 안내 문구뿐이라면, "
+        "엄마의 레시피 노트는 없는 것처럼 생각하고 일반 요리 지식으로 레시피를 만들어줘."
     )
 
     user_prompt = f"""
-요리 이름: {dish_name}
+요리 이름: {query_name}
 
 [엄마의 레시피 노트에서 찾은 내용]
 {combined_text}
@@ -422,7 +467,7 @@ def get_recipe_details(db, llm: ChatOpenAI, dish_name: str) -> Dict[str, Any]:
 
     data = _call_llm_json(llm, system_prompt, user_prompt)
 
-    final_name = (data.get("final_name") or dish_name).strip()
+    final_name = (data.get("final_name") or query_name).strip()
 
     ingredients = data.get("ingredients") or []
     if isinstance(ingredients, str):
@@ -436,7 +481,7 @@ def get_recipe_details(db, llm: ChatOpenAI, dish_name: str) -> Dict[str, Any]:
 
     summary = (data.get("raw_text") or combined_text).strip()
 
-    # 3) 영양 분석 추가
+    # 3) 영양 분석 추가 (엄마 노트가 없더라도, LLM 결과 텍스트 기반으로 분석)
     nutrition = _analyze_nutrition(llm, final_name, combined_text)
 
     return {
@@ -447,4 +492,5 @@ def get_recipe_details(db, llm: ChatOpenAI, dish_name: str) -> Dict[str, Any]:
         "summary": summary,
         "nutrition": nutrition,
         "source_text": source_text,
+        "not_food": False,
     }
