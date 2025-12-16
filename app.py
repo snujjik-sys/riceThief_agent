@@ -35,7 +35,7 @@ st.markdown(HIDE_Press_Enter_to_apply, unsafe_allow_html=True)
 # 전역 설정 및 세션 상태 초기화
 # -------------------------------
 
-st.set_page_config(page_title="자취생을 위한 엄마 밥선생", page_icon="🍲")
+st.set_page_config(page_title="🍲자취생을 위한 엄마 밥선생", page_icon="🍲")
 
 if "active_feature" not in st.session_state:
     st.session_state.active_feature = "recommend"  # recommend / info / chat
@@ -147,7 +147,7 @@ def get_or_generate_dish_image(dish_name: str) -> str:
 # -------------------------------
 
 def render_feature_recommend():
-    st.header("요리 추천")
+    st.header("🍳요리 추천")
     st.write("원하는 조건을 골라주면, 엄마가 오늘 먹을 메뉴를 하나 골라줄게.")
 
     cond_prev = st.session_state.get("recommendation_conditions", {})
@@ -383,7 +383,7 @@ def search_recipe():
     st.session_state.info_dish_input = ""
 
 def render_feature_info():
-    st.header("레시피 검색")
+    st.header("📜레시피 검색")
     st.write("궁금한 요리 이름을 입력하면 엄마가 알려줄게.")
 
     default_name = st.session_state.get("selected_dish_name", "")
@@ -486,11 +486,11 @@ def render_feature_info():
 
 
 # -------------------------------
-# 기능 3: 엄마와 대화 (챗봇)
+# 기능 3: 엄마와의 대화 (챗봇)
 # -------------------------------
 
 def render_feature_chat():
-    st.header("엄마와 대화")
+    st.header("📣엄마와의 대화")
     st.caption("엄마랑 대화하자! 요리, 재료, 생활 고민 뭐든지 물어봐.")
 
     for msg in st.session_state.messages:
@@ -504,7 +504,7 @@ def render_feature_chat():
     prompt = st.chat_input("엄마, 양파를 썰고 있는데 눈물이 너무 나와. 어떻게 해야 해? ㅠㅠ")
 
     if prompt:
-        st.chat_message("user").write(prompt)
+        st.chat_message("user", avatar="user_avatar.png").write(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
 
         chat_history = []
