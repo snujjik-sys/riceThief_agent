@@ -35,7 +35,7 @@ st.markdown(HIDE_Press_Enter_to_apply, unsafe_allow_html=True)
 # 전역 설정 및 세션 상태 초기화
 # -------------------------------
 
-st.set_page_config(page_title="🍲자취생을 위한 엄마 밥선생", page_icon="🍲")
+st.set_page_config(page_title="자취생을 위한 엄마 밥선생", page_icon="🍲")
 
 if "active_feature" not in st.session_state:
     st.session_state.active_feature = "recommend"  # recommend / info / chat
@@ -539,15 +539,15 @@ with st.sidebar:
     st.title("엄마 밥선생")
     st.markdown("아래 기능 중에 골라!")
 
-    if st.button("요리 추천", key="nav_recommend"):
+    if st.button("🍳요리 추천", key="nav_recommend"):
         st.session_state.active_feature = "recommend"
         st.rerun()
 
-    if st.button("레시피 검색", key="nav_info"):
+    if st.button("📜레시피 검색", key="nav_info"):
         st.session_state.active_feature = "info"
         st.rerun()
 
-    if st.button("엄마와 대화", key="nav_chat"):
+    if st.button("📣엄마와 대화", key="nav_chat"):
         st.session_state.active_feature = "chat"
         st.rerun()
 
@@ -559,7 +559,7 @@ with st.sidebar:
 # 메인 영역: 현재 기능 렌더링
 # -------------------------------
 
-st.title("자취생을 위한 엄마 밥선생")
+st.title("🍲자취생을 위한 엄마 밥선생")
 st.caption("엄마! 냉장고에 있는 걸로 뭐 해먹을까?")
 
 feature = st.session_state.active_feature
