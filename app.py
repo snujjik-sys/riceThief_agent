@@ -303,7 +303,7 @@ def render_feature_recommend():
             st.image(
                 img_bytes,
                 caption=f"{rec['name']} 예시 이미지",
-                use_container_width=True,
+                width='stretch'
             )
 
         c1, c2 = st.columns(2)
@@ -407,7 +407,7 @@ def render_feature_info():
         st.image(
             img_bytes,
             caption=f"{details['final_name']} 예시 이미지",
-            use_container_width=True,
+            width='stretch'
         )
 
     if details.get("from_recipes_txt"):

@@ -413,7 +413,7 @@ def get_recipe_details(db, llm: ChatOpenAI, dish_name: str) -> Dict[str, Any]:
 
     # relevance score는 [0, 1] 범위 (1에 가까울수록 더 유사)
     # 이 threshold보다 낮으면 "그다지 비슷하지 않다"고 보고 엄마 노트로 쓰지 않음
-    SIM_THRESHOLD = 0.5
+    SIM_THRESHOLD = 0.1
 
     filtered_docs = [
         doc for (doc, score) in scored_results
