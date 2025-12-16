@@ -10,6 +10,22 @@ HIDE_Press_Enter_to_apply = """
 [data-testid="InputInstructions"] {
     display: none !important;
 }
+
+.stChatMessage {
+    border-radius: 20px;
+    border: 1px solid #E0E0E0;
+}
+
+div.stButton > button {
+    background-color: #FF8C00;
+    color: white;
+    border-radius: 10px;
+    border: none;
+}
+div.stButton > button:hover {
+    background-color: #E07B00;
+    color: white;
+}
 </style>
 """
 st.markdown(HIDE_Press_Enter_to_apply, unsafe_allow_html=True)
@@ -19,7 +35,7 @@ st.markdown(HIDE_Press_Enter_to_apply, unsafe_allow_html=True)
 # 전역 설정 및 세션 상태 초기화
 # -------------------------------
 
-st.set_page_config(page_title="자취생 밥선생", page_icon="🍳")
+st.set_page_config(page_title="자취생을 위한 엄마 밥선생", page_icon="🍲")
 
 if "active_feature" not in st.session_state:
     st.session_state.active_feature = "recommend"  # recommend / info / chat
@@ -479,9 +495,11 @@ def render_feature_chat():
 
     for msg in st.session_state.messages:
         if msg["role"] == "user":
-            st.chat_message("user").write(msg["content"])
+            with st.chat_message("user", avatar="user_avatar.png"):
+                st.write(msg["content"])
         else:
-            st.chat_message("assistant").write(msg["content"])
+            with st.chat_message("assistant", avatar="mom_avatar.png"): 
+                st.write(msg["content"])
 
     prompt = st.chat_input("엄마, 양파를 썰고 있는데 눈물이 너무 나와. 어떻게 해야 해? ㅠㅠ")
 
@@ -501,8 +519,10 @@ def render_feature_chat():
                 prompt,
                 chat_history,
             )
-
-        st.chat_message("assistant").write(response_text)
+            
+        with st.chat_message("assistant", avatar="mom_avatar.png"):
+            st.write(response_text)
+            
         st.session_state.messages.append(
             {"role": "assistant", "content": response_text}
         )
