@@ -17,7 +17,7 @@ HIDE_Press_Enter_to_apply = """
 }
 
 div.stButton > button {
-    background-color: #FFB746;
+    background-color: #FFA526;
     color: white;
     border-radius: 10px;
     border: none;
