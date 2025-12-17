@@ -116,7 +116,7 @@ def render_fridge_sidebar():
                         background-color: #FFCC80;
                         color: #5D4037;
                         padding: 5px 10px;
-                        border-radius: 15px;
+                        border-radius: 10px;
                         display: inline-block;
                         margin: 2px;
                         font-size: 1.0rem;
