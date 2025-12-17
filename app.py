@@ -89,7 +89,7 @@ def render_fridge_sidebar():
     st.text_input(
         "냉장고에 있는 재료 추가 (쉼표로 여러 개 입력 가능)",
         key="fridge_input",
-        placeholder="예: 계란, 밥, 참기름",
+        placeholder="예: 계란, 고구마, 밥, 치킨",
     )
 
     st.button("재료 추가", key="btn_add_fridge", on_click=add_fridge_items)
@@ -101,7 +101,22 @@ def render_fridge_sidebar():
         for idx, ing in enumerate(list(st.session_state.fridge_ingredients)):
             c1, c2 = st.columns([4, 1])
             with c1:
-                st.markdown(f"- {ing}")
+                st.markdown(
+                    f"""
+                    <div style="
+                        background-color: #FFCC80;
+                        color: #5D4037;
+                        padding: 5px 10px;
+                        border-radius: 15px;
+                        display: inline-block;
+                        margin: 2px;
+                        font-size: 1.0rem;
+                    ">
+                        {ing}
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
             with c2:
                 if st.button("❌", key=f"del_ing_{idx}"):
                     st.session_state.fridge_ingredients.remove(ing)
