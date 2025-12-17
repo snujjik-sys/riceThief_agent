@@ -97,7 +97,7 @@ def render_fridge_sidebar():
 
     # 현재 재료 목록
     if st.session_state.fridge_ingredients:
-        st.markdown("**현재 냉장고 재료**")
+        st.markdown("**🍚현재 냉장고 재료**")
         for idx, ing in enumerate(list(st.session_state.fridge_ingredients)):
             c1, c2 = st.columns([4, 1])
             with c1:
@@ -118,7 +118,7 @@ def render_fridge_sidebar():
                     unsafe_allow_html=True
                 )
             with c2:
-                if st.button("❌", key=f"del_ing_{idx}"):
+                if st.button("×", key=f"del_ing_{idx}"):
                     st.session_state.fridge_ingredients.remove(ing)
                     # 삭제 후 즉시 화면 갱신
                     st.rerun()
