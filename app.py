@@ -551,7 +551,7 @@ def render_feature_chat():
             {"role": "assistant", "content": response_text}
         )
 
-        with st.expander("엄마가 참고한 레시피 노트 보기"):
+        with st.expander("📜엄마가 참고한 레시피 노트 보기"):
             st.info(retrieved_doc)
 
 
