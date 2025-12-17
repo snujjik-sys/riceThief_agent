@@ -22,10 +22,24 @@ div.stButton > button {
     border-radius: 10px;
     border: none;
 }
+
 div.stButton > button:hover {
     background-color: #E07B00;
     color: white;
 }
+
+.stTextInput > div > div > input {
+    border-radius: 15px;
+    border: 2px solid #FFCC80;
+    padding: 10px;
+}
+
+.streamlit-expanderHeader {
+    background-color: #FFFFFF;
+    border-radius: 10px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+}
+
 </style>
 """
 st.markdown(HIDE_Press_Enter_to_apply, unsafe_allow_html=True)
