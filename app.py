@@ -31,7 +31,8 @@ div.stButton > button:hover {
 .streamlit-expanderHeader {
     background-color: #FFFFFF;
     border-radius: 10px;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
+    margin-bottom: 10px;
 }
 
 </style>
@@ -105,7 +106,7 @@ def render_fridge_sidebar():
 
     # 현재 재료 목록
     if st.session_state.fridge_ingredients:
-        st.markdown("**🍚현재 냉장고 재료**")
+        st.markdown("**🍚현재 냉장고 재료🍚**")
         for idx, ing in enumerate(list(st.session_state.fridge_ingredients)):
             c1, c2 = st.columns([4, 1])
             with c1:
