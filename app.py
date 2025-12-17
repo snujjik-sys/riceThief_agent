@@ -28,12 +28,6 @@ div.stButton > button:hover {
     color: white;
 }
 
-.stTextInput > div > div > input {
-    border-radius: 15px;
-    border: 2px solid #FFCC80;
-    padding: 10px;
-}
-
 .streamlit-expanderHeader {
     background-color: #FFFFFF;
     border-radius: 10px;
